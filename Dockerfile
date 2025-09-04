@@ -1,5 +1,5 @@
 # Multi-stage build for combined frontend and backend
-FROM node:20-alpine as frontend-builder
+FROM node:20 as frontend-builder
 
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
@@ -8,7 +8,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Backend stage
-FROM node:20-alpine as backend-builder
+FROM node:20 as backend-builder
 
 WORKDIR /app/backend
 COPY backend/package*.json ./
@@ -16,10 +16,10 @@ RUN npm ci --only=production
 COPY backend/ ./
 
 # Final stage - combine both
-FROM node:20-alpine
+FROM node:20
 
 # Install nginx
-RUN apk add --no-cache nginx
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
 
 # Create app directory
 WORKDIR /app
