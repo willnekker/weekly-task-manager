@@ -27,9 +27,14 @@ This project was bootstrapped by an AI agent from Google Gemini.
 **Minimal setup:**
 
 ```bash
+# Generate a secure JWT secret
+JWT_SECRET=$(openssl rand -hex 32)
+
+# Run the container
 docker run -d -p 8080:80 \
-  -e JWT_SECRET=your-secure-jwt-secret-here \
-  -e DEFAULT_ADMIN_PASSWORD=your-admin-password \
+  -e JWT_SECRET="$JWT_SECRET" \
+  -e DEFAULT_ADMIN_PASSWORD=MySecurePassword123 \
+  -e ADMIN_USERNAME=admin \
   -v weekly-task-manager-data:/app/data \
   --name weekly-task-manager \
   ghcr.io/willnekker/weekly-task-manager:latest
@@ -37,7 +42,16 @@ docker run -d -p 8080:80 \
 
 **App runs at:** http://localhost:8080
 
-**Login with:** Username: `willem`, Password: your-admin-password
+**Login with:** Username: `admin`, Password: `MySecurePassword123`
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `JWT_SECRET` | Yes | - | Secure random string for JWT signing (use `openssl rand -hex 32`) |
+| `DEFAULT_ADMIN_PASSWORD` | Yes | - | Password for the admin user |
+| `ADMIN_USERNAME` | No | `willem` | Username for the admin user |
+| `NODE_ENV` | No | `production` | Node environment |
 
 ## 🐳 Docker Management
 
@@ -77,8 +91,10 @@ services:
     volumes:
       - weekly-task-manager-data:/app/data
     environment:
-      - JWT_SECRET=your-secure-jwt-secret-here
-      - DEFAULT_ADMIN_PASSWORD=your-admin-password
+      # Generate with: openssl rand -hex 32
+      - JWT_SECRET=abc123def456ghi789jkl012mno345pqr678stu901vwx234yz567890abcdef12
+      - DEFAULT_ADMIN_PASSWORD=MySecurePassword123
+      - ADMIN_USERNAME=admin
       - NODE_ENV=production
     restart: unless-stopped
 
@@ -89,6 +105,44 @@ volumes:
 Then run:
 ```bash
 docker-compose up -d
+```
+
+### .env File Example
+
+Create a `.env` file for easier management:
+
+```bash
+# Copy from .env.example and customize
+cp .env.example .env
+```
+
+Example `.env` contents:
+```bash
+# Generate with: openssl rand -hex 32
+JWT_SECRET=your-super-secure-random-jwt-secret-here
+DEFAULT_ADMIN_PASSWORD=YourSecureAdminPassword123
+ADMIN_USERNAME=admin
+NODE_ENV=production
+```
+
+Then use with docker-compose:
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  weekly-task-manager:
+    image: ghcr.io/willnekker/weekly-task-manager:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - weekly-task-manager-data:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  weekly-task-manager-data:
 ```
 
 ## Port Configuration
