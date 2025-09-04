@@ -71,21 +71,8 @@ function initDb() {
         console.log("Initialized default settings.");
     }
     
-    // Create admin user if it doesn't exist
-    const adminUsername = process.env.ADMIN_USERNAME || 'willem';
-    const adminExists = currentDb.prepare('SELECT id FROM users WHERE username = ?').get(adminUsername);
-    
-    if (!adminExists) {
-        const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'password123';
-        if (!adminPassword) {
-            console.warn("WARNING: ADMIN_USERNAME is set but DEFAULT_ADMIN_PASSWORD is not. Cannot create admin user.");
-            return;
-        }
-        const hashedPassword = bcrypt.hashSync(adminPassword, 10);
-        currentDb.prepare('INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)')
-               .run(adminUsername, hashedPassword, 1);
-        console.log(`Admin user '${adminUsername}' created successfully.`);
-    }
+    // No automatic admin user creation - first user becomes admin
+    console.log('Database initialized. First registered user will become admin.');
 }
 
 module.exports = { initDb, getDb };

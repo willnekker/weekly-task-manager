@@ -81,9 +81,17 @@ app.post('/api/signup', signupLimiter, [
     }
 
     const db = getDb();
-    const settings = db.prepare('SELECT allow_signups FROM settings WHERE id = 1').get();
-    if (!settings || !settings.allow_signups) {
-        return res.status(403).json({ message: 'Sign-ups are currently disabled.' });
+    
+    // Check if this is the first user (who becomes admin)
+    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
+    const isFirstUser = userCount.count === 0;
+    
+    if (!isFirstUser) {
+        // Check if signup is enabled for non-first users
+        const settings = db.prepare('SELECT allow_signups FROM settings WHERE id = 1').get();
+        if (!settings || !settings.allow_signups) {
+            return res.status(403).json({ message: 'User registration is currently disabled. Contact the administrator.' });
+        }
     }
 
     const { username, password } = req.body;
@@ -93,12 +101,23 @@ app.post('/api/signup', signupLimiter, [
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
+    const isAdmin = isFirstUser ? 1 : 0;
+    
     try {
-        const result = db.prepare('INSERT INTO users (username, password) VALUES (?, ?)')
-                         .run(username, hashedPassword);
-        const newUser = { id: result.lastInsertRowid, username };
-        const token = jwt.sign({ id: newUser.id, username: newUser.username, is_admin: 0 }, JWT_SECRET, { expiresIn: '7d' });
-        res.status(201).json({ token, user: { ...newUser, is_admin: 0 } });
+        const result = db.prepare('INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)')
+                         .run(username, hashedPassword, isAdmin);
+        const newUser = { id: result.lastInsertRowid, username, is_admin: isAdmin };
+        const token = jwt.sign({ id: newUser.id, username: newUser.username, is_admin: isAdmin }, JWT_SECRET, { expiresIn: '7d' });
+        
+        const message = isFirstUser 
+            ? 'Admin account created successfully! You are now the administrator.'
+            : 'User registered successfully';
+            
+        res.status(201).json({ 
+            token, 
+            user: newUser,
+            message
+        });
     } catch (err) {
         console.error("Signup error:", err);
         res.status(500).json({ message: 'Error creating user' });
