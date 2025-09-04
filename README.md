@@ -145,6 +145,82 @@ volumes:
   weekly-task-manager-data:
 ```
 
+### Custom Dockerfile Example
+
+If you want to build your own image or customize the application:
+
+```dockerfile
+# Multi-stage build for combined frontend and backend
+FROM node:20-alpine as frontend-builder
+
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+# Backend stage
+FROM node:20-alpine as backend-builder
+
+WORKDIR /app/backend
+COPY backend/package*.json ./
+RUN npm ci --only=production
+COPY backend/ ./
+
+# Final stage - combine both
+FROM node:20-alpine
+
+# Install nginx
+RUN apk add --no-cache nginx
+
+# Create app directory
+WORKDIR /app
+
+# Copy backend
+COPY --from=backend-builder /app/backend ./
+
+# Copy frontend build to nginx directory
+COPY --from=frontend-builder /app/frontend/build /usr/share/nginx/html
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Create directories
+RUN mkdir -p /app/data /var/log/nginx /var/lib/nginx/tmp
+
+# Create startup script
+RUN cat > /app/start.sh << 'EOF'
+#!/bin/sh
+# Start nginx in background
+nginx -g "daemon off;" &
+# Start backend
+exec node server.js
+EOF
+
+RUN chmod +x /app/start.sh
+
+# Expose ports
+EXPOSE 80
+
+# Start both services
+CMD ["/app/start.sh"]
+```
+
+Build and run your custom image:
+```bash
+# Build the image
+docker build -t my-task-manager .
+
+# Run with environment variables
+docker run -d -p 8080:80 \
+  -e JWT_SECRET="$(openssl rand -hex 32)" \
+  -e DEFAULT_ADMIN_PASSWORD=MyPassword123 \
+  -e ADMIN_USERNAME=admin \
+  -v task-manager-data:/app/data \
+  --name my-task-manager \
+  my-task-manager
+```
+
 ## Port Configuration
 
 - **Notes App (wills-notes):** http://localhost (port 80)
