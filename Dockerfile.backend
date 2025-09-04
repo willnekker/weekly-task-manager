@@ -1,0 +1,13 @@
+# Stage 1: Build
+FROM node:18-slim AS builder
+WORKDIR /app
+COPY backend/package*.json ./
+RUN npm install
+
+# Stage 2: Production
+FROM node:18-slim
+WORKDIR /app/backend
+COPY --from=builder /app/node_modules ./node_modules
+COPY backend/ .
+EXPOSE 3001
+CMD ["npm", "start"]
